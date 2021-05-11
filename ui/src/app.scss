@@ -1,0 +1,7 @@
+// TODO: https://bootstrap-vue.org/docs/reference/theming
+// sass-loader screw up with bootstrap 5
+$body-bg: #ff00;
+
+// Include Bootstrap and BootstrapVue SCSS files
+@import '~bootstrap/scss/bootstrap.scss';
+@import '~bootstrap-vue/src/index.scss';

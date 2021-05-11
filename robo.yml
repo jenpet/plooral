@@ -1,0 +1,7 @@
+dockerize:
+  summary: build the plooral container
+  exec: docker build -t jenpet/plooral:latest -f=ci/Dockerfile .
+
+kickstart:
+  summary: starts the plooral app and all dependencies for local development
+  exec: docker compose up -d --force-recreate

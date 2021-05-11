@@ -1,0 +1,41 @@
+version: '3.7'
+
+services:
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    restart: on-failure
+
+  ui:
+    image: node:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./ui:/var/plooral/ui
+    working_dir: /var/plooral/ui
+    entrypoint: "/bin/sh -c 'npm i && npm run serve'"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  api:
+    image: cosmtrek/air:latest
+    ports:
+      - "8079:8079"
+    working_dir: "/var/plooral/api"
+    entrypoint: "air -c /var/plooral/api/air.toml"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8079/api/v1/info" ]
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    volumes:
+      - ./api:/var/plooral/api
