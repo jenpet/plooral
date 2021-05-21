@@ -29,6 +29,8 @@ services:
     image: cosmtrek/air:latest
     ports:
       - "8079:8079"
+    environment:
+      - "POSTGRES_URI=postgres://postgres:postgres@postgres:5432/postgres?sslmode=disable"
     working_dir: "/var/plooral/api"
     entrypoint: "air -c /var/plooral/api/air.toml"
     healthcheck:

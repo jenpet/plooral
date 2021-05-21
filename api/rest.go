@@ -5,7 +5,9 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/jenpet/plooral/boards"
+	"github.com/jenpet/plooral/database"
 	"github.com/jenpet/plooral/orgs"
+	"github.com/sirupsen/logrus"
 	"net/http"
 	"time"
 )
@@ -18,6 +20,9 @@ func Serve() {
 }
 
 func Server() *gin.Engine {
+	// apply database migrations
+	database.DefaultMigrate(logrus.StandardLogger())
+
 	r := gin.New()
 	r.Use(cors.Default())
 	v1 := r.Group(apiBasePath)

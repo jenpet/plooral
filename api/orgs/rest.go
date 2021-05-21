@@ -3,30 +3,34 @@ package orgs
 import (
 	"encoding/json"
 	"github.com/gin-gonic/gin"
+	"net/http"
 )
 
-var orgs = []Organization{
-	{
-		"test-org",
-		"Test Organization",
-	},
-	{
-		"private-org",
-		"Private Organization",
-	},
-}
-
 func Bootstrap(rg *gin.RouterGroup) {
-	rg.GET("/orgs", handleGetAll)
+	a := api{s: newDefaultService()}
+	rg.GET("/orgs", a.handleGetAll)
 }
 
-func handleGetAll(c *gin.Context) {
-	respondWithJSON(c, 200, orgs)
+type api struct {
+	s *Service
 }
 
-func respondWithJSON(c *gin.Context, status int, o interface{}) {
+func (a *api) handleGetAll(c *gin.Context) {
+	orgs, err := a.s.AllOrganizations(false)
+	if err != nil {
+		respondWithJSON(c, http.StatusInternalServerError, nil, err)
+		return
+	}
+	respondWithJSON(c, http.StatusOK, orgs, nil)
+}
+
+func respondWithJSON(c *gin.Context, status int, o interface{}, err error) {
 	c.Writer.WriteHeader(status)
-	body := map[string]interface{}{"errors": []string{}, "data": o}
+	var errs []string
+	if err != nil {
+		errs = []string{err.Error()}
+	}
+	body := map[string]interface{}{"errors": errs, "data": o}
 	b, _ := json.Marshal(body)
 	_,_ = c.Writer.Write(b)
 }
