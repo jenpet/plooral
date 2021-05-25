@@ -81,6 +81,7 @@ func (r *repository) upsertOrganization(o Organization) (*Organization, error) {
 		ON CONFLICT(slug)
 		DO
 			UPDATE SET
+				slug = $1,
 				title = $2,
 				description = $3,
 				hidden = $4,

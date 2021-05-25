@@ -3,6 +3,7 @@ package orgs
 import (
 	"github.com/jenpet/plooral/database"
 	"github.com/jenpet/plooral/errors"
+	"github.com/jenpet/plooral/rest"
 	"github.com/jenpet/plooral/test/data"
 	"github.com/jenpet/plooral/testutil"
 	log "github.com/sirupsen/logrus"
@@ -45,29 +46,46 @@ func (ost OrganizationServiceTestSuite) TestOrganizationBySlug_shouldReturnOrgan
 	ost.Nil(o, "expected returned organization to be nil")
 }
 
-func (ost OrganizationServiceTestSuite) TestUpsertOrganization_shouldInsertAndReturnOrgWithNewID() {
-	o := Organization{
-		Slug:        "org-tests-upsert",
-		Name:        "Inserted Organization",
-		Description: "",
-		Hidden:      false,
-		Protected:   false,
-	}
+func (ost OrganizationServiceTestSuite) TestCreateOrganization_shouldInsertAndReturnOrgWithNewID() {
+	o := partialOrganization{}
+	o.setSlug("org-tests-insert")
+	o.setName("Inserted Organization")
+	o.setDescription("")
+	o.setHidden(false)
+	o.setProtected(false)
+	o.setTags([]string{})
 	// insert organization
-	inserted, err := ost.cut.UpsertOrganization(o)
+	inserted, err := ost.cut.CreateOrganization(o)
 	ost.NoError(err, "no error expected")
 	ost.True(inserted.ID >= 0, "id should be set")
 
-	// update organization
-	o.Name = "Updated Organization"
-	updated, err := ost.cut.UpsertOrganization(o)
-	ost.NoError(err, "no error expected")
-	ost.Equal(inserted.ID, updated.ID, "expected id to have the same value after update")
-	ost.Equal(updated.Name, o.Name, "expected name to be updated")
+	// update organization has to fail
+	recreated, err := ost.cut.CreateOrganization(o)
+	ost.Error(err, "error expected")
+	ost.Equal(rest.KUserInputInvalid, errors.ErrKind(err))
+	ost.Nil(recreated, "expected recreated to be nil")
 
-	lookup, err := ost.cut.OrganizationBySlug("org-tests-upsert")
+	lookup, err := ost.cut.OrganizationBySlug("org-tests-insert")
 	ost.NoError(err, "no error expected")
-	ost.Equal(updated.ID, lookup.ID, "expected ids to match")
+	ost.NotNil(lookup, "expected lookup not to be nil")
+}
+
+func (ost OrganizationServiceTestSuite) TestUpdateOrganization_shouldUpdateAndReturnOrg() {
+	o := partialOrganization{}
+	o.setSlug("non-existent")
+	_, err := ost.cut.UpdateOrganization(o)
+	ost.Error(err, "error expected")
+
+	o = partialOrganization{}
+	o.setName("Updated Title")
+	o.setSlug("org-tests-regular")
+
+	updated, err := ost.cut.UpdateOrganization(o)
+	ost.NoError(err, "no error expected")
+	ost.NotNil(updated, "expected result not to be nil")
+
+	lookup, _ := ost.cut.OrganizationBySlug("org-tests-regular")
+	ost.Equal("Updated Title", lookup.Name)
 }
 
 type OrganizationServiceTestSuite struct {

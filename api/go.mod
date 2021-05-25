@@ -3,6 +3,7 @@ module github.com/jenpet/plooral
 go 1.16
 
 require (
+	github.com/gavv/httpexpect/v2 v2.3.0
 	github.com/gin-contrib/cors v1.3.1
 	github.com/gin-gonic/gin v1.7.1
 	github.com/golang-migrate/migrate/v4 v4.14.2-0.20210519051621-1695f40b3e1d
