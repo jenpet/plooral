@@ -26,14 +26,14 @@ func (sst *SecurityServiceTestSuite) TestVerifyPassword_shouldOnlyConsiderActive
 func (sst *SecurityServiceTestSuite) TestPersistPassword_shouldPersistAndReturnSet() {
 	pw := "password"
 	pw2 := "password2"
-	set, err := sst.cut.PersistPassword(PartialPasswordSet{
+	set, err := sst.cut.PersistCredentials(PartialCredentialSet{
 		Password:             &pw,
 		PasswordConfirmation: &pw2,
 	})
 	sst.Nil(set, "set expected to be nil when passwords are unequal")
 	sst.Error(err, "error expected when passwords are unequal")
 
-	set, err = sst.cut.PersistPassword(PartialPasswordSet{
+	set, err = sst.cut.PersistCredentials(PartialCredentialSet{
 		Password:             &pw,
 		PasswordConfirmation: &pw,
 	})

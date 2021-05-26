@@ -48,6 +48,28 @@ func (oits OrganizationIntegrationTestSuite) TestOrganizationCRU() {
 		JSON().Object().Value("data").Object().Value("name").Equal("Integration Test Organization Update")
 }
 
+func (oits OrganizationIntegrationTestSuite) TestProtectedOrganizationCRU() {
+	// create a new organization
+	b, _ := ioutil.ReadFile("./test/data/request_bodies/protected_organization_creation_body.json")
+	created := oits.e.POST("/orgs").
+		WithBytes(b).
+		Expect().
+		Status(http.StatusCreated).JSON().Object().Value("data").Object()
+
+	created.Value("protected").Equal(true)
+	created.Value("user_credentials").Object().Value("password").Equal("secret")
+	created.Value("owner_credentials").Object().Value("password").NotNull()
+
+	slug := created.Value("slug").String().Raw()
+	oits.e.GET("/orgs/" + slug).
+		Expect().
+		Status(http.StatusForbidden).JSON().Object().Value("errors").String().NotEmpty()
+}
+
+func (oits OrganizationIntegrationTestSuite) TestHiddenOrganizationCRU() {
+
+}
+
 func (oits *OrganizationIntegrationTestSuite) SetupSuite() {
 	oits.e = httpexpect.New(oits.Suite.T(), apiBaseURI())
 }

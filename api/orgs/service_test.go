@@ -4,6 +4,7 @@ import (
 	"github.com/jenpet/plooral/database"
 	"github.com/jenpet/plooral/errors"
 	"github.com/jenpet/plooral/rest"
+	"github.com/jenpet/plooral/security"
 	"github.com/jenpet/plooral/test/data"
 	"github.com/jenpet/plooral/testutil"
 	log "github.com/sirupsen/logrus"
@@ -56,6 +57,7 @@ func (ost OrganizationServiceTestSuite) TestCreateOrganization_shouldInsertAndRe
 	o.setTags([]string{})
 	// insert organization
 	inserted, err := ost.cut.CreateOrganization(o)
+	ost.Nil(inserted.UserSecurity, "no user password expected when org is not hidden or protected")
 	ost.NoError(err, "no error expected")
 	ost.True(inserted.ID >= 0, "id should be set")
 
@@ -68,6 +70,36 @@ func (ost OrganizationServiceTestSuite) TestCreateOrganization_shouldInsertAndRe
 	lookup, err := ost.cut.OrganizationBySlug("org-tests-insert")
 	ost.NoError(err, "no error expected")
 	ost.NotNil(lookup, "expected lookup not to be nil")
+}
+
+func (ost OrganizationServiceTestSuite) TestCreateOrganization_whenProtectedEnabled_shouldReturnOrgWithSecurity() {
+	o := partialOrganization{}
+	o.setSlug("org-tests-pw-insert")
+	o.setName("Inserted Organization")
+	o.setDescription("")
+	o.setHidden(true)
+	o.setProtected(false)
+	o.setTags([]string{})
+
+	// hidden but not protected orgs should result in an error
+	inserted, err := ost.cut.CreateOrganization(o)
+	ost.Nil(inserted, "expected org to be nil")
+	ost.Equal(rest.KUserInputInvalid, errors.ErrKind(err), "error expected when org is hidden but not protected")
+
+	// protected but no user password
+	o.setProtected(true)
+	inserted, err = ost.cut.CreateOrganization(o)
+	ost.Nil(inserted, "expected org to be nil")
+	ost.Equal(rest.KUserInputInvalid, errors.ErrKind(err), "error expected when org is hidden but not protected")
+
+	o.setPassword("pw")
+	o.setPasswordConfirmation("pw")
+	inserted, err = ost.cut.CreateOrganization(o)
+	ost.NotNil(inserted, "expected inserted org not to be nil")
+	ost.NotNil(inserted.UserSecurity, "expected user security to be set after creation")
+	ost.NotNil(inserted.OwnerSecurity, "expected owner security to be set after creation")
+	ost.Equal(inserted.UserSecurity.Password, "pw", "given password should be set for user security")
+	ost.Equal(inserted.OwnerSecurity.Password, "generated", "generated password should be set for owner security")
 }
 
 func (ost OrganizationServiceTestSuite) TestUpdateOrganization_shouldUpdateAndReturnOrg() {
@@ -88,6 +120,23 @@ func (ost OrganizationServiceTestSuite) TestUpdateOrganization_shouldUpdateAndRe
 	ost.Equal("Updated Title", lookup.Name)
 }
 
+type mockedPasswordService struct {}
+
+func (mps *mockedPasswordService) GenerateAndPersistPassword() (*security.CredentialSet, error) {
+	return &security.CredentialSet{ ID: 1, Password: "generated"}, nil
+}
+
+func (mps *mockedPasswordService) PersistCredentials(set security.PartialCredentialSet) (*security.CredentialSet, error) {
+	return &security.CredentialSet{ ID: 2, Password: *set.Password }, nil
+}
+
+func (mps *mockedPasswordService) VerifyPassword(id int, password string) (bool, error) {
+	if password == "verified" {
+		return true, nil
+	}
+	return false, nil
+}
+
 type OrganizationServiceTestSuite struct {
 	suite.Suite
 	cut *Service
@@ -102,7 +151,7 @@ func (ost *OrganizationServiceTestSuite) SetupSuite() {
 	database.ApplyDefaultMigrations(log.StandardLogger(), pgURI)
 	testutil.ApplyFromEmbeddedFS(pgURI, data.TestDataMigrations, "migrations")
 	ost.repo = newRepository(pgURI)
-	ost.cut = newService(ost.repo)
+	ost.cut = newService(ost.repo, &mockedPasswordService{})
 }
 
 func (ost *OrganizationServiceTestSuite) TearDownSuite() {

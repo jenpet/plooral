@@ -3,13 +3,15 @@ package orgs
 import "github.com/jenpet/plooral/security"
 
 type Organization struct {
-	ID int `json:"id"`
-	Slug string `json:"slug"`
-	Name string `json:"name"`
-	Description string `json:"description"`
-	Hidden bool `json:"hidden"`
-	Protected bool `json:"protected"`
-	Tags []string `json:"tags"`
+	ID int                                `json:"id"`
+	Slug string                           `json:"slug"`
+	Name string                           `json:"name"`
+	Description string                    `json:"description"`
+	Hidden bool                           `json:"hidden"`
+	Protected bool                        `json:"protected"`
+	Tags []string                         `json:"tags"`
+	UserSecurity *security.CredentialSet  `json:"user_credentials,omitempty"`
+	OwnerSecurity *security.CredentialSet `json:"owner_credentials,omitempty"`
 }
 
 func (o *Organization) mergeWithPartial(u partialOrganization) {
@@ -40,7 +42,7 @@ func (o *Organization) mergeWithPartial(u partialOrganization) {
 
 // partialOrganization is used for user input and updates
 type partialOrganization struct {
-	security.PartialPasswordSet
+	*security.PartialCredentialSet
 	Slug *string `json:"slug"`
 	Name *string `json:"name"`
 	Description *string `json:"description"`
@@ -61,8 +63,16 @@ func (po *partialOrganization) setDescription(description string) {
 	po.Description = &description
 }
 
+func (po *partialOrganization) isHidden() bool {
+	return po.Hidden != nil && *po.Hidden != false
+}
+
 func (po *partialOrganization) setHidden(hidden bool) {
 	po.Hidden = &hidden
+}
+
+func (po *partialOrganization) isProtected() bool {
+	return po.Protected != nil && *po.Protected != false
 }
 
 func (po *partialOrganization) setProtected(protected bool) {
@@ -71,6 +81,20 @@ func (po *partialOrganization) setProtected(protected bool) {
 
 func (po *partialOrganization) setTags(tags []string) {
 	po.Tags = &tags
+}
+
+func (po *partialOrganization) setPassword(s string) {
+	if po.PartialCredentialSet == nil {
+		po.PartialCredentialSet = &security.PartialCredentialSet{}
+	}
+	po.Password = &s
+}
+
+func (po *partialOrganization) setPasswordConfirmation(s string) {
+	if po.PartialCredentialSet == nil {
+		po.PartialCredentialSet = &security.PartialCredentialSet{}
+	}
+	po.PasswordConfirmation = &s
 }
 
 func (po *partialOrganization) toOrganization() Organization {

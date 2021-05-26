@@ -1,0 +1,8 @@
+{
+  "slug": "org-int-tests-protected",
+  "name": "Integration Test Organization Creation",
+  "description": "Integration Test Description",
+  "protected": true,
+  "password": "secret",
+  "password_confirmation": "secret"
+}

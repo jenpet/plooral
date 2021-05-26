@@ -17,7 +17,7 @@ type repository struct {
 	db *sql.DB
 }
 
-func (r *repository) persistPassword(password string) (*PasswordSet, error) {
+func (r *repository) persistPassword(password string) (*CredentialSet, error) {
 	q := `
 		INSERT INTO
 			security_passwords( password )
@@ -31,7 +31,7 @@ func (r *repository) persistPassword(password string) (*PasswordSet, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &PasswordSet{ ID: id, Password: password }, nil
+	return &CredentialSet{ ID: id, Password: password }, nil
 }
 
 func (r *repository) verifyPassword(id int, password string) (bool, error) {

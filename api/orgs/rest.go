@@ -8,8 +8,8 @@ import (
 	"net/http"
 )
 
-func Bootstrap(rg *gin.RouterGroup) {
-	a := api{s: newDefaultService()}
+func Bootstrap(rg *gin.RouterGroup, pw passwordService) {
+	a := api{s: newDefaultService(pw)}
 	orgs := rg.Group("/orgs")
 	orgs.GET("", a.handleGetAll)
 	orgs.GET("/:orgSlug", a.handleGetOrganization)

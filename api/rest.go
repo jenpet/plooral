@@ -7,6 +7,7 @@ import (
 	"github.com/jenpet/plooral/boards"
 	"github.com/jenpet/plooral/database"
 	"github.com/jenpet/plooral/orgs"
+	"github.com/jenpet/plooral/security"
 	"github.com/sirupsen/logrus"
 	"net/http"
 	"time"
@@ -26,13 +27,14 @@ func Server() *gin.Engine {
 	r := gin.New()
 	r.Use(cors.Default())
 	v1 := r.Group(apiBasePath)
-	registerHandlers(v1)
+	setupDependencies(v1)
 	return r
 }
 
-func registerHandlers(r *gin.RouterGroup) {
+func setupDependencies(r *gin.RouterGroup) {
 	r.GET("/info", handleGetInfo)
-	orgs.Bootstrap(r)
+	secSvc := security.Bootstrap()
+	orgs.Bootstrap(r, secSvc)
 	boards.Bootstrap(r)
 }
 
