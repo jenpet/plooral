@@ -40,7 +40,7 @@ func (o *Organization) mergeWithPartial(u partialOrganization) {
 
 // partialOrganization is used for user input and updates
 type partialOrganization struct {
-	security.PartialUserPasswordInput
+	security.PartialPasswordSet
 	Slug *string `json:"slug"`
 	Name *string `json:"name"`
 	Description *string `json:"description"`
