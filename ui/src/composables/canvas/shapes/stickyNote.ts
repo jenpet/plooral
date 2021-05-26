@@ -4,7 +4,7 @@ import { v4 as uuid } from "uuid";
 import { ref, Ref, UnwrapRef, watch } from 'vue'
 
 const rectFontSize = 18
-const rectFontFamily = 'Calibri'
+const rectFontFamily = 'Patrick-Hand'
 
 const shapeType = 'stickyNote'
 const bus = getBus('canvas')
