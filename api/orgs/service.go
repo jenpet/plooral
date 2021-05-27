@@ -1,27 +1,32 @@
 package orgs
 
 import (
+	"context"
+	"fmt"
 	"github.com/jenpet/plooral/database"
 	"github.com/jenpet/plooral/errors"
 	"github.com/jenpet/plooral/rest"
 	"github.com/jenpet/plooral/security"
+	log "github.com/sirupsen/logrus"
 	"net/http"
 )
 
+const KOrganizationStateCorrupt errors.Kind = "OrganizationStateCorrupt"
+
 type Service struct {
 	repo *repository
-	ps passwordService
+	cs   credentialService
 }
 
-func newDefaultService(ps passwordService) *Service {
+func newDefaultService(ps credentialService) *Service {
 	return newService(newDefaultRepository(), ps)
 }
 
-func newService(r *repository, ps passwordService) *Service {
-	return &Service{repo: r, ps: ps}
+func newService(r *repository, ps credentialService) *Service {
+	return &Service{repo: r, cs: ps}
 }
 
-func (s *Service) CreateOrganization(o partialOrganization) (*Organization, error) {
+func (s *Service) CreateOrganization(ctx context.Context, o partialOrganization) (*Organization, error) {
 	// hidden and unprotected organizations cannot be created and are considered invalid
 	if o.isHidden() && !o.isProtected() {
 		return nil, errors.Ef("hidden organizations also have to be protected", http.StatusBadRequest, rest.KUserInputInvalid)
@@ -32,54 +37,112 @@ func (s *Service) CreateOrganization(o partialOrganization) (*Organization, erro
 	}
 
 	// check if organization exists
-	org, err := s.OrganizationBySlug(*o.Slug)
-	if err != nil && errors.ErrKind(err) != database.KNoEntityFound {
+	exists, err := s.repo.organizationExists(*o.Slug)
+	if err != nil {
 		return nil, err
 	}
-	if org != nil {
-		return nil, errors.E("organization '%s' does already exist.", http.StatusBadRequest, rest.KUserInputInvalid)
+	if exists {
+		return nil, errors.Ef("organization '%s' does already exist.", *o.Slug, http.StatusBadRequest, rest.KUserInputInvalid)
 	}
 
-	// persist the credential set given by the user
-	userSet, err := s.ps.PersistCredentials(*o.PartialCredentialSet)
-	if err != nil {
-		return nil, errors.Ef("failed to persist credentials. Error: %+v", err)
-	}
-
-	// create and persist credential set for the owner
-	ownerSet, err := s.ps.GenerateAndPersistPassword()
-	if err != nil {
-		return nil, errors.Ef("failed to persist credentials. Error: %+v", err)
-	}
-
-	// create organization
 	newOrg := o.toOrganization()
-	newOrg.UserSecurity = userSet
-	newOrg.OwnerSecurity = ownerSet
 
-	created, err := s.repo.upsertOrganization(newOrg)
+	// in case the organization is protected generate the user and owner credentials and set them accordingly
+	if o.isProtected() {
+		// persist the credential set given by the user
+		userSet, err := s.cs.PersistCredentials(*o.PartialCredentialSet)
+		if err != nil {
+			return nil, errors.Ef("failed to persist credentials. Error: %+v", err)
+		}
+
+		// create and persist credential set for the owner
+		ownerSet, err := s.cs.GenerateAndPersistPassword()
+		if err != nil {
+			return nil, errors.Ef("failed to persist credentials. Error: %+v", err)
+		}
+		newOrg.UserSecurity = userSet
+		newOrg.OwnerSecurity = ownerSet
+	}
+
+	created, err := s.repo.createOrganization(newOrg)
 	return created, err
 }
 
-func (s *Service) UpdateOrganization(o partialOrganization) (*Organization, error) {
-	org, err := s.OrganizationBySlug(*o.Slug)
+func (s *Service) UpdateOrganization(ctx context.Context, o partialOrganization) (*Organization, error) {
+	org, err := s.OrganizationBySlug(ctx, *o.Slug)
 	if err != nil {
 		return nil, err
 	}
 	org.mergeWithPartial(o)
-	return s.repo.upsertOrganization(*org)
+	return s.repo.updateOrganization(*org)
 }
 
-func (s *Service) OrganizationBySlug(slug string) (*Organization, error) {
-	return s.repo.organizationBySlug(slug)
+func (s *Service) OrganizationBySlug(ctx context.Context, slug string) (*Organization, error) {
+	org, err := s.repo.organizationBySlug(slug)
+	if err != nil {
+		return nil, err
+	}
+	// if the organization is not protected simply return it
+	if !org.Protected {
+		org.clearCredentials()
+		return org, err
+	}
+	creds := extractCredentials(ctx)
+	if err = s.validateOrganizationAccess(*org, creds); err == nil {
+		org.clearCredentials()
+		return org, nil
+	}
+	return nil, err
+}
+
+func (s *Service) validateOrganizationAccess(org Organization, creds string) error {
+	// check if th org at least a valid owner security
+	if !org.UserSecurity.HasValidID() || !org.OwnerSecurity.HasValidID() {
+		return errors.Ef("organization '%s' is in a corrupted state, protected but no credentials present.", KOrganizationStateCorrupt)
+	}
+	// in case user security and owner security do not match an error will be returned
+	// TODO: Maybe remove calls to the credential service to reduce database interactions and perform joins with org table
+	if !s.validateCredentials(org.UserSecurity.ID, creds) && !s.validateCredentials(org.OwnerSecurity.ID, creds) {
+		// hidden orgs with wrong credentials should result in a 404 NOT FOUND HTTP response code to avoid reconstructing hidden org structures
+		if org.Hidden {
+			return errors.E("no organization found", database.KNoEntityFound, http.StatusNotFound)
+		}
+		return errors.E("invalid credentials", security.KCredentialInputInvalid, http.StatusForbidden)
+	}
+	return nil
+}
+
+func (s *Service) validateCredentials(credentialSetID int, creds string) bool {
+	ok, err := s.cs.VerifyCredentials(credentialSetID, creds)
+
+	if err != nil {
+		log.Warnf("failed verifying credentials for credential set ID '%d'", credentialSetID)
+		return false
+	}
+	return ok
 }
 
 func (s *Service) AllOrganizations(includeHidden bool) ([]Organization, error) {
-	return s.repo.allOrganizations(includeHidden)
+	orgs, err := s.repo.allOrganizations(includeHidden)
+	if err != nil {
+		return []Organization{}, nil
+	}
+	for i := range orgs {
+		orgs[i].clearCredentials()
+	}
+	return orgs, err
 }
 
-type passwordService interface {
+func extractCredentials(ctx context.Context) string {
+	creds := ctx.Value(rest.CredentialContextKey)
+	if creds == nil {
+		return ""
+	}
+	return fmt.Sprintf("%s", creds)
+}
+
+type credentialService interface {
 	GenerateAndPersistPassword() (*security.CredentialSet, error)
-	VerifyPassword(id int, password string) (bool, error)
+	VerifyCredentials(id int, password string) (bool, error)
 	PersistCredentials(set security.PartialCredentialSet) (*security.CredentialSet, error)
 }

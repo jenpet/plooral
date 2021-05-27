@@ -32,6 +32,6 @@ func ApplyFromEmbeddedFS(pgURI string, fsys embed.FS, path string) {
 func ApplyTestMigration(db *sql.DB, b []byte) {
 	_, err := db.Query(string(b))
 	if err != nil {
-		log.Fatalf("Failed to apply migration file '%s'. Error: %v", err)
+		log.Fatalf("Failed to apply migration. Error: %v", err)
 	}
 }

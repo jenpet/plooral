@@ -1,6 +1,7 @@
 package orgs
 
 import (
+	"context"
 	"github.com/jenpet/plooral/database"
 	"github.com/jenpet/plooral/errors"
 	"github.com/jenpet/plooral/rest"
@@ -9,6 +10,7 @@ import (
 	"github.com/jenpet/plooral/testutil"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/suite"
+	"net/http"
 	"testing"
 )
 
@@ -35,16 +37,36 @@ func (ost OrganizationServiceTestSuite) TestAllOrganizations_shouldReturnFullLis
 }
 
 func (ost OrganizationServiceTestSuite) TestOrganizationBySlug_shouldReturnOrganization() {
-	o, err := ost.cut.OrganizationBySlug("org-tests-regular")
+	o, err := ost.cut.OrganizationBySlug(nil, "org-tests-regular")
 	ost.NoError(err, "no error expected during lookup")
 	ost.Equal(o.Slug, "org-tests-regular")
 	ost.False(o.Protected)
 	ost.False(o.Hidden)
 	o = nil
 	err = nil
-	o, err = ost.cut.OrganizationBySlug("unknown")
+	o, err = ost.cut.OrganizationBySlug(nil, "unknown")
 	ost.Equal(database.KNoEntityFound, errors.ErrKind(err), "common database error expected")
 	ost.Nil(o, "expected returned organization to be nil")
+}
+
+func (ost OrganizationServiceTestSuite) TestOrganizationBySlug_whenProtectedShouldRequirePassword() {
+	// test a protected only organization
+	o, err := ost.cut.OrganizationBySlug(contextWithCredentials("wrong-creds"), "org-tests-protected")
+	ost.Nil(o, "no org expected when using wrong credentials")
+	ost.Error(err, "error expected when using wrong credentials")
+	ost.Equal(security.KCredentialInputInvalid, errors.ErrKind(err))
+	ost.Equal(http.StatusForbidden, errors.ErrStatusCode(err), "expected protected only orgs to result in status code forbidden")
+
+	// test a protected and hidden organization
+	o, err = ost.cut.OrganizationBySlug(contextWithCredentials("wrong-creds"), "org-tests-hidden")
+	ost.Nil(o, "no org expected when using wrong credentials")
+	ost.Error(err, "error expected when using wrong credentials")
+	ost.Equal(database.KNoEntityFound, errors.ErrKind(err))
+	ost.Equal(http.StatusNotFound, errors.ErrStatusCode(err), "expected protected only orgs to result in status code forbidden")
+
+	o, err = ost.cut.OrganizationBySlug(contextWithCredentials("verified"), "org-tests-protected")
+	ost.NotNil(o, "org expected")
+	ost.NoError(err, "no error expected")
 }
 
 func (ost OrganizationServiceTestSuite) TestCreateOrganization_shouldInsertAndReturnOrgWithNewID() {
@@ -56,18 +78,18 @@ func (ost OrganizationServiceTestSuite) TestCreateOrganization_shouldInsertAndRe
 	o.setProtected(false)
 	o.setTags([]string{})
 	// insert organization
-	inserted, err := ost.cut.CreateOrganization(o)
+	inserted, err := ost.cut.CreateOrganization(nil, o)
 	ost.Nil(inserted.UserSecurity, "no user password expected when org is not hidden or protected")
 	ost.NoError(err, "no error expected")
 	ost.True(inserted.ID >= 0, "id should be set")
 
-	// update organization has to fail
-	recreated, err := ost.cut.CreateOrganization(o)
+	// recreate organization has to fail
+	recreated, err := ost.cut.CreateOrganization(nil, o)
 	ost.Error(err, "error expected")
 	ost.Equal(rest.KUserInputInvalid, errors.ErrKind(err))
 	ost.Nil(recreated, "expected recreated to be nil")
 
-	lookup, err := ost.cut.OrganizationBySlug("org-tests-insert")
+	lookup, err := ost.cut.OrganizationBySlug(nil, "org-tests-insert")
 	ost.NoError(err, "no error expected")
 	ost.NotNil(lookup, "expected lookup not to be nil")
 }
@@ -82,19 +104,19 @@ func (ost OrganizationServiceTestSuite) TestCreateOrganization_whenProtectedEnab
 	o.setTags([]string{})
 
 	// hidden but not protected orgs should result in an error
-	inserted, err := ost.cut.CreateOrganization(o)
+	inserted, err := ost.cut.CreateOrganization(nil, o)
 	ost.Nil(inserted, "expected org to be nil")
 	ost.Equal(rest.KUserInputInvalid, errors.ErrKind(err), "error expected when org is hidden but not protected")
 
 	// protected but no user password
 	o.setProtected(true)
-	inserted, err = ost.cut.CreateOrganization(o)
+	inserted, err = ost.cut.CreateOrganization(nil, o)
 	ost.Nil(inserted, "expected org to be nil")
 	ost.Equal(rest.KUserInputInvalid, errors.ErrKind(err), "error expected when org is hidden but not protected")
 
 	o.setPassword("pw")
 	o.setPasswordConfirmation("pw")
-	inserted, err = ost.cut.CreateOrganization(o)
+	inserted, err = ost.cut.CreateOrganization(nil, o)
 	ost.NotNil(inserted, "expected inserted org not to be nil")
 	ost.NotNil(inserted.UserSecurity, "expected user security to be set after creation")
 	ost.NotNil(inserted.OwnerSecurity, "expected owner security to be set after creation")
@@ -105,19 +127,23 @@ func (ost OrganizationServiceTestSuite) TestCreateOrganization_whenProtectedEnab
 func (ost OrganizationServiceTestSuite) TestUpdateOrganization_shouldUpdateAndReturnOrg() {
 	o := partialOrganization{}
 	o.setSlug("non-existent")
-	_, err := ost.cut.UpdateOrganization(o)
+	_, err := ost.cut.UpdateOrganization(nil, o)
 	ost.Error(err, "error expected")
 
 	o = partialOrganization{}
 	o.setName("Updated Title")
 	o.setSlug("org-tests-regular")
 
-	updated, err := ost.cut.UpdateOrganization(o)
+	updated, err := ost.cut.UpdateOrganization(nil, o)
 	ost.NoError(err, "no error expected")
 	ost.NotNil(updated, "expected result not to be nil")
 
-	lookup, _ := ost.cut.OrganizationBySlug("org-tests-regular")
+	lookup, _ := ost.cut.OrganizationBySlug(nil, "org-tests-regular")
 	ost.Equal("Updated Title", lookup.Name)
+}
+
+func contextWithCredentials(c string) context.Context {
+	return context.WithValue(context.Background(), rest.CredentialContextKey, c)
 }
 
 type mockedPasswordService struct {}
@@ -130,7 +156,7 @@ func (mps *mockedPasswordService) PersistCredentials(set security.PartialCredent
 	return &security.CredentialSet{ ID: 2, Password: *set.Password }, nil
 }
 
-func (mps *mockedPasswordService) VerifyPassword(id int, password string) (bool, error) {
+func (mps *mockedPasswordService) VerifyCredentials(id int, password string) (bool, error) {
 	if password == "verified" {
 		return true, nil
 	}

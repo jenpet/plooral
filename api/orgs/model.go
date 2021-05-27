@@ -3,7 +3,7 @@ package orgs
 import "github.com/jenpet/plooral/security"
 
 type Organization struct {
-	ID int                                `json:"id"`
+	ID int                                `json:"-"`
 	Slug string                           `json:"slug"`
 	Name string                           `json:"name"`
 	Description string                    `json:"description"`
@@ -38,6 +38,12 @@ func (o *Organization) mergeWithPartial(u partialOrganization) {
 	if u.Tags != nil {
 		o.Tags = *u.Tags
 	}
+}
+
+// clearCredentials sets user and owner credentials to nil so that they won't get marshalled into potential JSON responses
+func (o *Organization) clearCredentials() {
+	o.OwnerSecurity = nil
+	o.UserSecurity = nil
 }
 
 // partialOrganization is used for user input and updates

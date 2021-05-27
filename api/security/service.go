@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-const KPasswordInputInvalid errors.Kind = "PasswordInputInvalid"
+const KCredentialInputInvalid errors.Kind = "CredentialInputInvalid"
 
 // generatedPasswordLength indicates how many runes should be used for system generated passwords
 const generatedPasswordLength = 16
@@ -24,7 +24,7 @@ type Service struct {
 
 func (s *Service) PersistCredentials(set PartialCredentialSet) (*CredentialSet, error) {
 	if *set.Password == "" || *set.Password != *set.PasswordConfirmation {
-		return nil, errors.E("given passwords do not match", KPasswordInputInvalid, http.StatusBadRequest)
+		return nil, errors.E("given passwords do not match", KCredentialInputInvalid, http.StatusBadRequest)
 	}
 	return s.repo.persistPassword(*set.Password)
 }
@@ -33,6 +33,6 @@ func (s *Service) GenerateAndPersistPassword() (*CredentialSet, error) {
 	return s.repo.persistPassword(randomSequence(generatedPasswordLength))
 }
 
-func (s *Service) VerifyPassword(id int, password string) (bool, error) {
+func (s *Service) VerifyCredentials(id int, password string) (bool, error) {
 	return s.repo.verifyPassword(id, password)
 }

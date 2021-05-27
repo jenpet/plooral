@@ -10,15 +10,15 @@ import (
 )
 
 func (sst *SecurityServiceTestSuite) TestVerifyPassword_shouldOnlyConsiderActiveOnesAsValid() {
-	ok, err := sst.cut.VerifyPassword(1, "active-password")
+	ok, err := sst.cut.VerifyCredentials(1000, "active-password")
 	sst.Nil(err, "no error expected")
 	sst.True(ok, "expected active password to be verified successfully")
 
-	ok, err = sst.cut.VerifyPassword(2, "inactive-password")
+	ok, err = sst.cut.VerifyCredentials(1001, "inactive-password")
 	sst.Nil(err, "no error expected")
 	sst.False(ok, "expected inactive password to not be verified successfully")
 
-	ok, err = sst.cut.VerifyPassword(3, "nonexistent-password")
+	ok, err = sst.cut.VerifyCredentials(9999, "nonexistent-password")
 	sst.Nil(err, "no error expected")
 	sst.False(ok, "expected nonexistent password to not be verified successfully")
 }
@@ -41,7 +41,7 @@ func (sst *SecurityServiceTestSuite) TestPersistPassword_shouldPersistAndReturnS
 	sst.Equal(pw, set.Password, "expected returned password to match input")
 	sst.True(set.ID > 0, "expected returned ID to have a valid value")
 
-	ok, _ := sst.cut.VerifyPassword(set.ID, set.Password)
+	ok, _ := sst.cut.VerifyCredentials(set.ID, set.Password)
 	sst.True(ok, "expected persisted password to be present")
 }
 
@@ -50,7 +50,7 @@ func (sst SecurityServiceTestSuite) TestGenerateAndPersistPassword_shouldReturnS
 	sst.NoError(err, "no error expected when generated")
 	sst.NotNil(set, "expected returned set not to be nil")
 
-	ok, _ := sst.cut.VerifyPassword(set.ID, set.Password)
+	ok, _ := sst.cut.VerifyCredentials(set.ID, set.Password)
 	sst.True(ok, "expected persisted password to be present")
 }
 

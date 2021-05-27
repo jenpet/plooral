@@ -8,7 +8,7 @@ import (
 	"net/http"
 )
 
-func Bootstrap(rg *gin.RouterGroup, pw passwordService) {
+func Bootstrap(rg *gin.RouterGroup, pw credentialService) {
 	a := api{s: newDefaultService(pw)}
 	orgs := rg.Group("/orgs")
 	orgs.GET("", a.handleGetAll)
@@ -31,7 +31,7 @@ func (a *api) handleGetAll(c *gin.Context) {
 }
 
 func (a *api) handleGetOrganization(c *gin.Context) {
-	org, err := a.s.OrganizationBySlug(c.Param("orgSlug"))
+	org, err := a.s.OrganizationBySlug(c, c.Param("orgSlug"))
 	if err != nil {
 		respondWithJSON(c, errors.ErrStatusCode(err), nil, err)
 		return
@@ -46,7 +46,7 @@ func (a *api) handleCreateOrganization(c *gin.Context) {
 		respondWithJSON(c, http.StatusBadRequest, nil, err)
 		return
 	}
-	org, err := a.s.CreateOrganization(body)
+	org, err := a.s.CreateOrganization(c, body)
 	if err != nil {
 		respondWithJSON(c, errors.ErrStatusCode(err), nil, err)
 		return
@@ -66,7 +66,7 @@ func (a *api) handleUpdateOrganization(c *gin.Context) {
 			errors.E("Path slug does not match body slug", rest.KUserInputInvalid))
 		return
 	}
-	update, err := a.s.UpdateOrganization(body)
+	update, err := a.s.UpdateOrganization(c, body)
 	if err != nil {
 		respondWithJSON(c, http.StatusBadRequest, nil, err)
 		return

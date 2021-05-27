@@ -1,1 +1,1 @@
-DROP TABLE IF EXISTS security_passwords;
+DROP TABLE IF EXISTS security_credentials;

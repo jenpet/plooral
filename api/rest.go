@@ -7,6 +7,7 @@ import (
 	"github.com/jenpet/plooral/boards"
 	"github.com/jenpet/plooral/database"
 	"github.com/jenpet/plooral/orgs"
+	"github.com/jenpet/plooral/rest"
 	"github.com/jenpet/plooral/security"
 	"github.com/sirupsen/logrus"
 	"net/http"
@@ -26,6 +27,7 @@ func Server() *gin.Engine {
 
 	r := gin.New()
 	r.Use(cors.Default())
+	r.Use(rest.ExtractCredentials())
 	v1 := r.Group(apiBasePath)
 	setupDependencies(v1)
 	return r

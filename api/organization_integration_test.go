@@ -8,6 +8,20 @@ import (
 	"testing"
 )
 
+func (oits OrganizationIntegrationTestSuite) TestGetOrganization_shouldValidateAllowedReturnAttributes() {
+	allowedAttrs := []string{"slug", "name", "description", "protected", "hidden", "tags" }
+	// request a hidden organization since they have a larger attribute set
+	hidden := oits.e.GET("/orgs/org-tests-hidden").WithHeader("plooral-credentials", "user-hidden").
+		Expect().
+		Status(http.StatusOK).JSON().Object().Value("data").Object()
+
+	// check that only allowed attributes should be returned
+	hidden.Keys().Length().Equal(len(allowedAttrs))
+	for _, attr := range allowedAttrs {
+		hidden.ContainsKey(attr)
+	}
+}
+
 func (oits OrganizationIntegrationTestSuite) TestOrganizationCRU() {
 	// retrieve all organizations which are present
 	oits.e.GET("/orgs").
@@ -63,11 +77,21 @@ func (oits OrganizationIntegrationTestSuite) TestProtectedOrganizationCRU() {
 	slug := created.Value("slug").String().Raw()
 	oits.e.GET("/orgs/" + slug).
 		Expect().
-		Status(http.StatusForbidden).JSON().Object().Value("errors").String().NotEmpty()
+		Status(http.StatusForbidden).JSON().Object().Value("errors").Array().NotEmpty()
+
+	oits.e.GET("/orgs/" + slug).WithHeader("plooral-credentials", "secret").
+		Expect().
+		Status(http.StatusOK).JSON().Object().Value("data").Object().Value("slug").Equal(slug)
 }
 
-func (oits OrganizationIntegrationTestSuite) TestHiddenOrganizationCRU() {
+func (oits OrganizationIntegrationTestSuite) TestGetHiddenOrganization() {
+	oits.e.GET("/orgs/org-tests-hidden").
+		Expect().
+		Status(http.StatusNotFound).JSON().Object().Value("errors").Array().NotEmpty()
 
+	oits.e.GET("/orgs/org-tests-hidden").WithHeader("plooral-credentials", "user-hidden").
+		Expect().
+		Status(http.StatusOK).JSON().Object().Value("data").Object().Value("slug").Equal("org-tests-hidden")
 }
 
 func (oits *OrganizationIntegrationTestSuite) SetupSuite() {

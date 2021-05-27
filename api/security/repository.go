@@ -20,7 +20,7 @@ type repository struct {
 func (r *repository) persistPassword(password string) (*CredentialSet, error) {
 	q := `
 		INSERT INTO
-			security_passwords( password )
+			security_credentials( password )
 		VALUES(
 			crypt($1, gen_salt('bf'))
 		)
@@ -39,7 +39,7 @@ func (r *repository) verifyPassword(id int, password string) (bool, error) {
 		SELECT
 			COUNT(1)
 		FROM
-			security_passwords
+			security_credentials
 		WHERE
 			id = $1
 		AND
