@@ -26,6 +26,18 @@ export default defineComponent({
 </script>
 
 <style lang="scss">
+  @font-face {
+    font-family: "Patrick-Hand";
+    src: local("Patrick-Hand"),
+    url(./assets/fonts/PatrickHand-Regular.ttf) format("truetype");
+  }
+
+  @font-face {
+    font-family: "Press-Start-2P";
+    src: local("Press-Start-2P"),
+    url(./assets/fonts/PressStart2P-Regular.ttf) format("truetype");
+  }
+
   html, body {
     margin: 0;
     height: 100%;

@@ -18,6 +18,9 @@ $ robo kickstart
 ```
 Spins up all necessary containers for local development with hot reload.
 
+### 3. Enjoy
+Open `localhost:8080` in a browser. It may take a moment to load...
+
 ## Utilized Technologies
 - [Vue 3](https://vuejs.org/) (including a sad first attempt using the new [Composition API](https://v3.vuejs.org/api/composition-api.html#composition-api))
 - [Bootstrap](https://getbootstrap.com/)
