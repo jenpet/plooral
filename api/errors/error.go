@@ -23,6 +23,23 @@ type Error struct {
 	Err        error
 }
 
+func (e *Error) HTTPStatusCode() int {
+	return e.StatusCode
+}
+
+func (e *Error) ErrorKind() string {
+	return string(e.Kind)
+}
+
+// Error returns the string representation of the error message.
+func (e *Error) Error() string {
+	fmtErr := fmt.Sprintf("%s: %s", e.Kind, e.Message)
+	if e.Err == nil {
+		return fmtErr
+	}
+	return fmt.Sprintf("%s :: caused by: %s", fmtErr, e.Err.Error())
+}
+
 func E(message string, args ...interface{}) error {
 	e := &Error{
 		Kind:    KUndefined,
@@ -40,6 +57,9 @@ func E(message string, args ...interface{}) error {
 			e.Err = &cp
 		case error:
 			e.Err = arg
+		case Error:
+			e.Err = arg.Err
+			e.Kind = arg.Kind
 		default:
 			log.Panicf("unknown type %T, value %v in errors.E call", arg, arg)
 		}
@@ -57,15 +77,6 @@ func Ef(format string, args ...interface{}) error {
 	}
 	msg := fmt.Sprintf(format, args[0:numFormatArgs]...)
 	return E(msg, args[numFormatArgs:numArgs]...)
-}
-
-// Error returns the string representation of the error message.
-func (e *Error) Error() string {
-	fmtErr := fmt.Sprintf("%s: %s", e.Kind, e.Message)
-	if e.Err == nil {
-		return fmtErr
-	}
-	return fmt.Sprintf("%s :: caused by: %s", fmtErr, e.Err.Error())
 }
 
 
