@@ -20,6 +20,11 @@
         col-sm-6
       ">
         <h3>Please select your organization</h3>
+        <span
+          v-if="organizations.length <= 0"
+        >
+          No organizations present.
+        </span>
         <div
             class="
               list-group
@@ -36,21 +41,46 @@
         </div>
       </div>
     </div>
+    <div
+      class="row"
+    >
+      <div
+        class="
+          col-12
+          col-sm-6
+        "      
+      >
+       <AddOrganizationForm/> 
+      </div>
+    </div>
   </div>
 </template>
 
 <script lang="ts">
 import {defineComponent, Ref, ref} from "vue";
 import {getOrganizations, Organization} from "@/composables/api";
+import AddOrganizationForm from "@/components/orgs/AddOrganizationForm.vue"
+import {getBus} from "@/bus";
+
+const bus = getBus("organizations-list")
 
 export default defineComponent({
   name: "OrganizationList",
+  components: {
+    AddOrganizationForm
+  },
   setup() {
     const organizations:Ref<Organization[]> = ref([])
+    const loadOrgs = () => {
+      getOrganizations().then(val => {
+        organizations.value = val
+      })
+    }
+    bus.on("organizations:organization:submitted", loadOrgs)
 
-    getOrganizations().then(val => {
-      organizations.value = val
-    })
+    // initially load organizations
+    loadOrgs()
+
     return {
       organizations
     }

@@ -27,7 +27,7 @@
 </template>
 
 <script lang="ts">
-import {defineComponent} from "vue";
+import { defineComponent } from "vue";
 import colors from '@/composables/canvas/shapes/colors'
 import {list, ShapeDefintion} from '@/composables/canvas/shapes';
 

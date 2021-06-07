@@ -1,5 +1,5 @@
 import axios, {AxiosResponse} from 'axios'
-import {Board, Organization} from "@/composables/api/model";
+import {Board, Organization, OrganizationCreationRequestBody} from "@/composables/api/model";
 import config from "@/config";
 
 const apiBasePath = 'api/v1'
@@ -15,6 +15,13 @@ export const getOrganizations = async () : Promise<Organization[]>=> {
         .then((resp ) : Organization[] => {
             return <Organization[]> resp.data
         })
+}
+
+export const createOrganization = async(content:OrganizationCreationRequestBody) : Promise<Organization> => {
+    return performAPICall(client.post("/orgs", content))
+        .then((resp) : Organization => {
+            return <Organization> resp.data
+    })
 }
 
 export const getBoards = async (orgSlug : string) : Promise<Board[]> => {
