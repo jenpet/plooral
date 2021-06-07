@@ -3,6 +3,7 @@ package rest
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"io/ioutil"
@@ -119,5 +120,5 @@ func (te *testError) ErrorKind() string {
 }
 
 func (te *testError) Error() string {
-	return te.err.Error()
+	return fmt.Sprintf("%s: %s", te.kind, te.err.Error())
 }

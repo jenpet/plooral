@@ -1,7 +1,6 @@
 package rest
 
 import (
-	"fmt"
 	"net/http"
 )
 
@@ -23,9 +22,8 @@ func RespondWithJSONError(w http.ResponseWriter, err error) {
 // If the present error can be asserted into a ResponseError it will use the different arguments to build up the error message
 // and extract the underlying status if it is more specific than HTTP 500.
 func RespondWithJSON(w http.ResponseWriter, httpStatus int, data interface{}, err error) {
-	errorMsg := ""
+	errorMsg := formatResponseError(err)
 	if err != nil {
-		errorMsg = err.Error()
 		// if an error occurs the default http status is http 500 (internal server error)
 		// In case error is of type ResponseError it might override the existing error code
 		httpStatus = http.StatusInternalServerError
@@ -37,7 +35,6 @@ func RespondWithJSON(w http.ResponseWriter, httpStatus int, data interface{}, er
 		if respErr.HTTPStatusCode() < httpStatus {
 			httpStatus = respErr.HTTPStatusCode()
 		}
-		errorMsg = responseErrorToString(respErr)
 	}
 
 	w.Header().Add("Content-Type", ContentTypeUTF8JSON)
@@ -49,8 +46,17 @@ func RespondWithJSON(w http.ResponseWriter, httpStatus int, data interface{}, er
 	_,_ = w.Write(resp.JSON())
 }
 
-func responseErrorToString(rErr ResponseError) string {
-	return fmt.Sprintf("%s: %s", rErr.ErrorKind(), rErr.Error())
+// formatResponseError formats a given error for the response bodies 'error' attribute.
+// A nil error will result in an empty string, a assertable ResponseError results in its formatting method.
+// The fallback is to simply use the Error() method of the error interface.
+func formatResponseError(err error) string {
+	if err == nil {
+		return ""
+	}
+	if respErr, ok := err.(ResponseError); ok {
+		return respErr.Error()
+	}
+	return err.Error()
 }
 
 // ResponseError provides information required to return a more detailed HTTP response.
