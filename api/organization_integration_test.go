@@ -77,7 +77,7 @@ func (oits OrganizationIntegrationTestSuite) TestProtectedOrganizationCRU() {
 	slug := created.Value("slug").String().Raw()
 	oits.e.GET("/orgs/" + slug).
 		Expect().
-		Status(http.StatusForbidden).JSON().Object().Value("errors").Array().NotEmpty()
+		Status(http.StatusForbidden).JSON().Object().Value("error").String().NotEmpty()
 
 	oits.e.GET("/orgs/" + slug).WithHeader("plooral-credentials", "secret").
 		Expect().
@@ -87,7 +87,7 @@ func (oits OrganizationIntegrationTestSuite) TestProtectedOrganizationCRU() {
 func (oits OrganizationIntegrationTestSuite) TestGetHiddenOrganization() {
 	oits.e.GET("/orgs/org-tests-hidden").
 		Expect().
-		Status(http.StatusNotFound).JSON().Object().Value("errors").Array().NotEmpty()
+		Status(http.StatusNotFound).JSON().Object().Value("error").String().NotEmpty()
 
 	oits.e.GET("/orgs/org-tests-hidden").WithHeader("plooral-credentials", "user-hidden").
 		Expect().

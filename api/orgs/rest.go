@@ -1,7 +1,6 @@
 package orgs
 
 import (
-	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"github.com/jenpet/plooral/errors"
 	"github.com/jenpet/plooral/rest"
@@ -24,67 +23,52 @@ type api struct {
 func (a *api) handleGetAll(c *gin.Context) {
 	orgs, err := a.s.AllOrganizations(false)
 	if err != nil {
-		respondWithJSON(c, http.StatusInternalServerError, nil, err)
+		rest.RespondWithJSONError(c.Writer, err)
 		return
 	}
-	respondWithJSON(c, http.StatusOK, orgs, nil)
+	rest.RespondWithJSONData(c.Writer, http.StatusOK, orgs)
 }
 
 func (a *api) handleGetOrganization(c *gin.Context) {
 	org, err := a.s.OrganizationBySlug(c, c.Param("orgSlug"))
 	if err != nil {
-		respondWithJSON(c, errors.ErrStatusCode(err), nil, err)
+		rest.RespondWithJSONError(c.Writer, err)
 		return
 	}
-	respondWithJSON(c, http.StatusOK, org, nil)
+	rest.RespondWithJSONData(c.Writer, http.StatusOK, org)
 }
 
 func (a *api) handleCreateOrganization(c *gin.Context) {
 	var body partialOrganization
 	err := c.ShouldBindJSON(&body)
 	if err != nil {
-		respondWithJSON(c, http.StatusBadRequest, nil, err)
+		rest.RespondWithJSONError(c.Writer, err)
 		return
 	}
 	org, err := a.s.CreateOrganization(c, body)
 	if err != nil {
-		respondWithJSON(c, errors.ErrStatusCode(err), nil, err)
+		rest.RespondWithJSONError(c.Writer, err)
 		return
 	}
-	respondWithJSON(c, http.StatusCreated, org, nil)
+	rest.RespondWithJSONData(c.Writer, http.StatusCreated, org)
 }
 
 func (a *api) handleUpdateOrganization(c *gin.Context) {
 	var body partialOrganization
 	err := c.ShouldBindJSON(&body)
 	if err != nil {
-		respondWithJSON(c, http.StatusBadRequest, nil, err)
+		rest.RespondWithJSONError(c.Writer, rest.WrapUserInputInvalidError(err))
 		return
 	}
 	if body.Slug != nil && *body.Slug != c.Param("orgSlug") {
-		respondWithJSON(c, http.StatusBadRequest, nil,
-			errors.E("Path slug does not match body slug", rest.KUserInputInvalid))
+		err = rest.WrapUserInputInvalidError(errors.E("path slug does not match body slug"))
+		rest.RespondWithJSONError(c.Writer, err)
 		return
 	}
 	update, err := a.s.UpdateOrganization(c, body)
 	if err != nil {
-		respondWithJSON(c, http.StatusBadRequest, nil, err)
+		rest.RespondWithJSONError(c.Writer, err)
 		return
 	}
-	respondWithJSON(c, http.StatusOK, update, nil)
-}
-
-func respondWithJSON(c *gin.Context, status int, o interface{}, err error) {
-	if status <= 0 {
-		status = http.StatusInternalServerError
-	}
-	c.Writer.WriteHeader(status)
-	c.Header("Content-Type", "application/json")
-	var errs []string
-	if err != nil {
-		errs = []string{err.Error()}
-	}
-	body := map[string]interface{}{"errors": errs, "data": o}
-	b, _ := json.Marshal(body)
-	_,_ = c.Writer.Write(b)
+	rest.RespondWithJSONData(c.Writer, http.StatusOK, update)
 }

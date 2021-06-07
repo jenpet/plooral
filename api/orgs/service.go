@@ -88,11 +88,11 @@ func (s *Service) OrganizationBySlug(ctx context.Context, slug string) (*Organiz
 		return org, err
 	}
 	creds := extractCredentials(ctx)
-	if err = s.validateOrganizationAccess(*org, creds); err == nil {
-		org.clearCredentials()
-		return org, nil
+	if err = s.validateOrganizationAccess(*org, creds); err != nil {
+		return nil, err
 	}
-	return nil, err
+	org.clearCredentials()
+	return org, nil
 }
 
 func (s *Service) validateOrganizationAccess(org Organization, creds string) error {
