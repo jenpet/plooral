@@ -5,3 +5,31 @@ dockerize:
 kickstart:
   summary: starts the plooral app and all dependencies for local development
   exec: docker compose up -d --force-recreate
+
+cmd:
+  summary: >-
+    runs a command within one of the development docker containers 'ui' or 'api'.
+    Example: robo ui "npm i"
+  command: |
+    if [ "${1}" != "ui" ] && [ "${1}" != "api" ]; then
+      echo "Invalid container selection. Allowed containers are 'ui' and 'api'."
+      exit 1
+    fi
+
+    if [ -z "${2}" ]; then
+      echo "Missing command which can be forwarded to container."
+      exit 1
+    fi
+
+    # use hardcoded container names since docker formatting via templating is not possible due to hugo
+    # has to be replaced as soon as variable replacement is not that greedy.
+    CONTAINER=plooral_${1}_1
+
+    docker ps | grep ${CONTAINER} > /dev/null
+    if [ $? != 0 ]; then
+      echo "Could not find plooral development container of type '${1}'"
+      exit 1
+    fi
+
+    # run the actual command
+    docker exec ${CONTAINER} /bin/sh -c "${2}"
